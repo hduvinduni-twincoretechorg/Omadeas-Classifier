@@ -1,0 +1,12 @@
+{
+  "tenants": {
+    "default": {
+      "defaultProfile": "default",
+      "profiles": {
+        "default": {
+          "entities": {}
+        }
+      }
+    }
+  }
+}

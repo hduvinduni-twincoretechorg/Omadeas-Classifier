@@ -1,0 +1,35 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build outputs
+**/bin/
+**/obj/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# Rider
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Test results / coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# JWT key files (provide locally / via env vars)
+*.pem
+
+# OS
+Thumbs.db
+.DS_Store
