@@ -3,8 +3,10 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Omadeas.Classifier.API.Middleware;
 using Omadeas.Classifier.Core.Interfaces;
+using Omadeas.Classifier.Core.Services;
 using Omadeas.Classifier.Core.Utils;
 using Omadeas.Classifier.Infrastructure.Extensions;
+using Omadeas.Classifier.Infrastructure.Repositories;
 using Omadeas.Classifier.Infrastructure.Utilities;
 using Omadeas.SuperValidator.Lib.Extensions;
 using Omadeas.SuperValidator.Lib.Schema;
@@ -55,10 +57,10 @@ public class Program
             throw new InvalidOperationException("Database connection string is not configured.");
 
         // Register repositories
-        // (classifier repositories registered here as entities are implemented)
+        builder.Services.AddScoped<IClassifierSelectionModeRepository, ClassifierSelectionModeRepository>();
 
         // Register services
-        // (classifier services registered here as entities are implemented)
+        builder.Services.AddScoped<IClassifierSelectionModeService, ClassifierSelectionModeService>();
 
         // Register Dapper wrapper
         builder.Services.AddScoped<IDapperWrapper>(sp => new DapperWrapper(connectionString));
