@@ -83,4 +83,12 @@ public class ClassifierProfilesController : ControllerBase
         await _profileService.ReactivateClassifierProfileAsync(id);
         return NoContent();
     }
+
+    /// <summary>Gets the profile's definition history (most recent first), including member changes.</summary>
+    [HttpGet("{id}/history")]
+    public async Task<IActionResult> GetClassifierProfileHistory([FromRoute] Guid id)
+    {
+        IEnumerable<ClassifierProfileHistoryDto> history = await _profileService.GetClassifierProfileHistoryAsync(id);
+        return Ok(history);
+    }
 }

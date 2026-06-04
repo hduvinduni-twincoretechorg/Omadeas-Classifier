@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Omadeas.Classifier.Core.Constants;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Exceptions;
@@ -10,15 +11,18 @@ public class ClassifierProfileMemberService : IClassifierProfileMemberService
     private readonly IClassifierProfileMemberRepository _memberRepository;
     private readonly IClassifierProfileRepository _profileRepository;
     private readonly IClassifierRepository _classifierRepository;
+    private readonly IClassifierProfileHistoryRepository _historyRepository;
 
     public ClassifierProfileMemberService(
         IClassifierProfileMemberRepository memberRepository,
         IClassifierProfileRepository profileRepository,
-        IClassifierRepository classifierRepository)
+        IClassifierRepository classifierRepository,
+        IClassifierProfileHistoryRepository historyRepository)
     {
         _memberRepository = memberRepository;
         _profileRepository = profileRepository;
         _classifierRepository = classifierRepository;
+        _historyRepository = historyRepository;
     }
 
     public async Task<IEnumerable<ClassifierProfileMemberDto>> GetClassifierProfileMembersAsync(Guid profileId)
@@ -46,9 +50,15 @@ public class ClassifierProfileMemberService : IClassifierProfileMemberService
 
         if (member.Order <= 0)
             member.Order = 100;
-        member.CreatedBy ??= PlatformConstants.SystemPrincipalId;
+        Guid principalId = member.CreatedBy ?? PlatformConstants.SystemPrincipalId;
+        member.CreatedBy = principalId;
 
-        return await _memberRepository.AddClassifierProfileMemberAsync(member);
+        ClassifierProfileMemberDto created = await _memberRepository.AddClassifierProfileMemberAsync(member);
+
+        await WriteHistoryAsync(created.ProfileId, "member_added", principalId,
+            $"Classifier {created.ClassifierId} added to profile", JsonSerializer.Serialize(Snapshot(created)));
+
+        return created;
     }
 
     public async Task UpdateClassifierProfileMemberAsync(ClassifierProfileMemberDto member)
@@ -58,18 +68,32 @@ public class ClassifierProfileMemberService : IClassifierProfileMemberService
         if (member.Order <= 0)
             member.Order = 100;
 
+        bool requiredChanged = existing.IsRequired != member.IsRequired;
+        bool orderChanged = existing.Order != member.Order;
+        if (!requiredChanged && !orderChanged)
+            return;
+
+        Guid principalId = member.UpdatedBy ?? PlatformConstants.SystemPrincipalId;
+
         // profile_id and classifier_id are immutable.
         existing.IsRequired = member.IsRequired;
         existing.Order = member.Order;
-        existing.UpdatedBy = member.UpdatedBy ?? PlatformConstants.SystemPrincipalId;
+        existing.UpdatedBy = principalId;
 
         await _memberRepository.UpdateClassifierProfileMemberAsync(existing);
+
+        await WriteHistoryAsync(existing.ProfileId, "member_edited", principalId,
+            $"Member {existing.ClassifierId} updated", JsonSerializer.Serialize(Snapshot(existing)));
     }
 
     public async Task DeleteClassifierProfileMemberAsync(Guid profileId, Guid id)
     {
-        await GetExistingAsync(profileId, id);
+        ClassifierProfileMemberDto existing = await GetExistingAsync(profileId, id);
+
         await _memberRepository.DeleteClassifierProfileMemberAsync(id);
+
+        await WriteHistoryAsync(profileId, "member_removed", PlatformConstants.SystemPrincipalId,
+            $"Classifier {existing.ClassifierId} removed from profile", JsonSerializer.Serialize(Snapshot(existing)));
     }
 
     // ----- helpers -----
@@ -88,4 +112,25 @@ public class ClassifierProfileMemberService : IClassifierProfileMemberService
             throw new NotFoundException($"Member with ID {id} was not found on profile {profileId}.");
         return existing;
     }
+
+    private Task WriteHistoryAsync(Guid profileId, string operation, Guid occurredBy, string summary, string? payload)
+        => _historyRepository.AddClassifierProfileHistoryAsync(new ClassifierProfileHistoryDto
+        {
+            ProfileId = profileId,
+            Operation = operation,
+            OccurredBy = occurredBy,
+            OccurredAt = DateTime.UtcNow,
+            Summary = summary,
+            Payload = payload
+        });
+
+    private static object Snapshot(ClassifierProfileMemberDto m)
+        => new
+        {
+            m.Id,
+            m.ProfileId,
+            m.ClassifierId,
+            m.IsRequired,
+            m.Order
+        };
 }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Omadeas.Classifier.Core.Constants;
 using Omadeas.Classifier.Core.DTOs;
@@ -12,10 +13,14 @@ public class ClassifierProfileService : IClassifierProfileService
     private static readonly string[] ScopeDefaults = { "self", "subtree" };
 
     private readonly IClassifierProfileRepository _profileRepository;
+    private readonly IClassifierProfileHistoryRepository _historyRepository;
 
-    public ClassifierProfileService(IClassifierProfileRepository profileRepository)
+    public ClassifierProfileService(
+        IClassifierProfileRepository profileRepository,
+        IClassifierProfileHistoryRepository historyRepository)
     {
         _profileRepository = profileRepository;
+        _historyRepository = historyRepository;
     }
 
     public async Task<IEnumerable<ClassifierProfileDto>> GetAllClassifierProfilesAsync(Guid? companyId, string? source, bool? isActive)
@@ -45,9 +50,15 @@ public class ClassifierProfileService : IClassifierProfileService
         if (clashes.Any(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase)))
             throw new BadRequestException($"A profile with name '{profile.Name}' already exists for this company.");
 
-        profile.CreatedBy ??= PlatformConstants.SystemPrincipalId;
+        Guid principalId = profile.CreatedBy ?? PlatformConstants.SystemPrincipalId;
+        profile.CreatedBy = principalId;
 
-        return await _profileRepository.AddClassifierProfileAsync(profile);
+        ClassifierProfileDto created = await _profileRepository.AddClassifierProfileAsync(profile);
+
+        await WriteHistoryAsync(created.Id, "created", principalId,
+            $"Profile '{created.Name}' created", JsonSerializer.Serialize(Snapshot(created)));
+
+        return created;
     }
 
     public async Task UpdateClassifierProfileAsync(ClassifierProfileDto profile)
@@ -67,7 +78,15 @@ public class ClassifierProfileService : IClassifierProfileService
         profile.Source = existing.Source;
         profile.Code = existing.Code;
 
-        if (!string.Equals(existing.Name, profile.Name, StringComparison.Ordinal))
+        bool nameChanged = !string.Equals(existing.Name, profile.Name, StringComparison.Ordinal);
+        bool scopeChanged = !string.Equals(existing.ScopeDefault, profile.ScopeDefault, StringComparison.Ordinal);
+        bool orderChanged = existing.Order != profile.Order;
+        bool descriptionChanged = !string.Equals(existing.Description, profile.Description, StringComparison.Ordinal);
+
+        if (!nameChanged && !scopeChanged && !orderChanged && !descriptionChanged)
+            return;
+
+        if (nameChanged)
         {
             IEnumerable<ClassifierProfileDto> clashes = await _profileRepository.FindClassifierProfilesByCodeOrNameAsync(
                 existing.CompanyId, existing.Code, profile.Name);
@@ -76,8 +95,16 @@ public class ClassifierProfileService : IClassifierProfileService
                 throw new BadRequestException($"A profile with name '{profile.Name}' already exists for this company.");
         }
 
-        profile.UpdatedBy ??= PlatformConstants.SystemPrincipalId;
+        Guid principalId = profile.UpdatedBy ?? PlatformConstants.SystemPrincipalId;
+        profile.UpdatedBy = principalId;
+
         await _profileRepository.UpdateClassifierProfileAsync(profile);
+
+        string operation = nameChanged ? "renamed" : scopeChanged ? "scope_changed" : orderChanged ? "reordered" : "renamed";
+        string summary = BuildUpdateSummary(nameChanged, scopeChanged, orderChanged, descriptionChanged, profile.Name);
+        string payload = JsonSerializer.Serialize(new { before = Snapshot(existing), after = Snapshot(profile) });
+
+        await WriteHistoryAsync(existing.Id, operation, principalId, summary, payload);
     }
 
     public async Task RetireClassifierProfileAsync(Guid id)
@@ -86,6 +113,8 @@ public class ClassifierProfileService : IClassifierProfileService
         if (!existing.IsActive)
             return;
         await _profileRepository.SetClassifierProfileActiveAsync(id, false, PlatformConstants.SystemPrincipalId);
+        await WriteHistoryAsync(id, "retired", PlatformConstants.SystemPrincipalId,
+            $"Profile '{existing.Name}' retired", JsonSerializer.Serialize(new { isActive = false }));
     }
 
     public async Task ReactivateClassifierProfileAsync(Guid id)
@@ -94,6 +123,14 @@ public class ClassifierProfileService : IClassifierProfileService
         if (existing.IsActive)
             return;
         await _profileRepository.SetClassifierProfileActiveAsync(id, true, PlatformConstants.SystemPrincipalId);
+        await WriteHistoryAsync(id, "activated", PlatformConstants.SystemPrincipalId,
+            $"Profile '{existing.Name}' reactivated", JsonSerializer.Serialize(new { isActive = true }));
+    }
+
+    public async Task<IEnumerable<ClassifierProfileHistoryDto>> GetClassifierProfileHistoryAsync(Guid id)
+    {
+        await GetExistingAsync(id);
+        return await _historyRepository.GetClassifierProfileHistoryAsync(id);
     }
 
     // ----- helpers -----
@@ -105,6 +142,17 @@ public class ClassifierProfileService : IClassifierProfileService
             throw new NotFoundException($"Profile with ID {id} was not found.");
         return existing;
     }
+
+    private Task WriteHistoryAsync(Guid profileId, string operation, Guid occurredBy, string summary, string? payload)
+        => _historyRepository.AddClassifierProfileHistoryAsync(new ClassifierProfileHistoryDto
+        {
+            ProfileId = profileId,
+            Operation = operation,
+            OccurredBy = occurredBy,
+            OccurredAt = DateTime.UtcNow,
+            Summary = summary,
+            Payload = payload
+        });
 
     private static void ValidateCommonFields(ClassifierProfileDto profile)
     {
@@ -139,4 +187,28 @@ public class ClassifierProfileService : IClassifierProfileService
                 throw new BadRequestException("Profile source must be 'platform' or 'tenant'.");
         }
     }
+
+    private static string BuildUpdateSummary(bool name, bool scope, bool order, bool description, string newName)
+    {
+        List<string> parts = new();
+        if (name) parts.Add("name");
+        if (scope) parts.Add("scope_default");
+        if (order) parts.Add("order");
+        if (description) parts.Add("description");
+        return $"Profile '{newName}' updated ({string.Join(", ", parts)})";
+    }
+
+    private static object Snapshot(ClassifierProfileDto p)
+        => new
+        {
+            p.Id,
+            p.CompanyId,
+            p.Source,
+            p.Code,
+            p.Name,
+            p.Description,
+            p.Order,
+            p.ScopeDefault,
+            p.IsActive
+        };
 }
