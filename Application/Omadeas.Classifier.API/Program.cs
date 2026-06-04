@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -56,11 +57,28 @@ public class Program
         if (string.IsNullOrEmpty(connectionString))
             throw new InvalidOperationException("Database connection string is not configured.");
 
+        // Map List<string> <-> jsonb (classifier.applies_to_node_types) for Dapper.
+        SqlMapper.AddTypeHandler(new JsonbStringListTypeHandler());
+
         // Register repositories
         builder.Services.AddScoped<IClassifierSelectionModeRepository, ClassifierSelectionModeRepository>();
+        builder.Services.AddScoped<IClassifierRepository, ClassifierRepository>();
+        builder.Services.AddScoped<IClassifierHistoryRepository, ClassifierHistoryRepository>();
+        builder.Services.AddScoped<IClassifierValueRepository, ClassifierValueRepository>();
+        builder.Services.AddScoped<IClassifierValuePolicyRepository, ClassifierValuePolicyRepository>();
+        builder.Services.AddScoped<IClassifierValueConstraintRepository, ClassifierValueConstraintRepository>();
+        builder.Services.AddScoped<IClassifierProfileRepository, ClassifierProfileRepository>();
+        builder.Services.AddScoped<IClassifierProfileMemberRepository, ClassifierProfileMemberRepository>();
+        builder.Services.AddScoped<IClassifierProfileHistoryRepository, ClassifierProfileHistoryRepository>();
 
         // Register services
         builder.Services.AddScoped<IClassifierSelectionModeService, ClassifierSelectionModeService>();
+        builder.Services.AddScoped<IClassifierService, ClassifierService>();
+        builder.Services.AddScoped<IClassifierValueService, ClassifierValueService>();
+        builder.Services.AddScoped<IClassifierValuePolicyService, ClassifierValuePolicyService>();
+        builder.Services.AddScoped<IClassifierValueConstraintService, ClassifierValueConstraintService>();
+        builder.Services.AddScoped<IClassifierProfileService, ClassifierProfileService>();
+        builder.Services.AddScoped<IClassifierProfileMemberService, ClassifierProfileMemberService>();
 
         // Register Dapper wrapper
         builder.Services.AddScoped<IDapperWrapper>(sp => new DapperWrapper(connectionString));
