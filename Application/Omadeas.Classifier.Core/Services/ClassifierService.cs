@@ -13,13 +13,16 @@ public class ClassifierService : IClassifierService
 
     private readonly IClassifierRepository _classifierRepository;
     private readonly IClassifierHistoryRepository _historyRepository;
+    private readonly IClassifierValuePolicyRepository _policyRepository;
 
     public ClassifierService(
         IClassifierRepository classifierRepository,
-        IClassifierHistoryRepository historyRepository)
+        IClassifierHistoryRepository historyRepository,
+        IClassifierValuePolicyRepository policyRepository)
     {
         _classifierRepository = classifierRepository;
         _historyRepository = historyRepository;
+        _policyRepository = policyRepository;
     }
 
     public async Task<IEnumerable<ClassifierDto>> GetAllClassifiersAsync(Guid? companyId, string? source, bool? isActive)
@@ -51,6 +54,19 @@ public class ClassifierService : IClassifierService
         classifier.CreatedBy = principalId;
 
         ClassifierDto created = await _classifierRepository.AddClassifierAsync(classifier);
+
+        // Spec R2: a policy is created together with the classifier.
+        // Default: SINGLE_SELECT, optional, manual. Admins refine it via the policy endpoint.
+        await _policyRepository.AddClassifierValuePolicyAsync(new ClassifierValuePolicyDto
+        {
+            ClassifierId = created.Id,
+            SelectionModeId = PlatformConstants.SelectionModeIds.SingleSelect,
+            IsRequired = false,
+            AllowCustomValues = false,
+            RequiresReasonOnChange = false,
+            ComputationMode = PlatformConstants.ComputationMode.Manual,
+            CreatedBy = principalId
+        });
 
         await WriteHistoryAsync(created.Id, "created", principalId,
             $"Classifier '{created.Name}' created", JsonSerializer.Serialize(Snapshot(created)));

@@ -23,4 +23,20 @@ public static class PlatformConstants
         public const string Platform = "platform";
         public const string Tenant = "tenant";
     }
+
+    /// <summary>Policy computation modes. v2 implements only 'manual'. Spec §6.3.</summary>
+    public static class ComputationMode
+    {
+        public const string Manual = "manual";
+        public const string Computed = "computed";
+        public const string Suggested = "suggested";
+    }
+
+    /// <summary>Stable platform-seeded selection-mode ids (see V1_0 seed). Spec §6.9.</summary>
+    public static class SelectionModeIds
+    {
+        public static readonly Guid SingleSelect = Guid.Parse("11111111-0000-0000-0000-000000000001");
+        public static readonly Guid MultipleSelect = Guid.Parse("11111111-0000-0000-0000-000000000002");
+        public static readonly Guid Hierarchical = Guid.Parse("11111111-0000-0000-0000-000000000003");
+    }
 }
