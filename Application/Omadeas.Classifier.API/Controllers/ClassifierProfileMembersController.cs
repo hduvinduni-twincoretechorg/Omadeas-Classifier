@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
@@ -9,7 +10,8 @@ namespace Omadeas.Classifier.API.Controllers;
 /// hard delete (removes the classifier from the bundle, spec §4.6).
 /// </summary>
 [ApiController]
-[Route("api/profiles/{profileId}/members")]
+[Authorize]
+[Route("api/classifiers/profiles/{profileId}/members")]
 public class ClassifierProfileMembersController : ControllerBase
 {
     private readonly IClassifierProfileMemberService _memberService;

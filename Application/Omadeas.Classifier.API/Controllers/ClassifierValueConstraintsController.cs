@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
@@ -6,11 +7,12 @@ namespace Omadeas.Classifier.API.Controllers;
 
 /// <summary>
 /// CRUD for inter-value constraints (REQUIRES / PROHIBITS / WARNS). Constraints span two
-/// classifiers, so they live at a top-level route rather than nested under one classifier.
+/// classifiers, so they live at a route alongside (not nested under) a single classifier.
 /// Advisory only in v2. Constraints may be hard-deleted (spec §4.6).
 /// </summary>
 [ApiController]
-[Route("api/constraints")]
+[Authorize]
+[Route("api/classifiers/constraints")]
 public class ClassifierValueConstraintsController : ControllerBase
 {
     private readonly IClassifierValueConstraintService _constraintService;

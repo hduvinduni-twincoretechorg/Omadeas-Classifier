@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Omadeas.Classifier.Core.Constants;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
 
@@ -6,10 +8,11 @@ namespace Omadeas.Classifier.API.Controllers;
 
 /// <summary>
 /// CRUD for the classifier selection-mode lookup (SINGLE_SELECT, MULTIPLE_SELECT,
-/// HIERARCHICAL). Platform-seeded; write access is governance-restricted (auth deferred).
+/// HIERARCHICAL). Platform-seeded; writes are platform-team only.
 /// </summary>
 [ApiController]
-[Route("api/selection-modes")]
+[Authorize]
+[Route("api/classifiers/selection-modes")]
 public class ClassifierSelectionModeController : ControllerBase
 {
     private readonly IClassifierSelectionModeService _selectionModeService;
@@ -23,8 +26,8 @@ public class ClassifierSelectionModeController : ControllerBase
         _logger = logger;
     }
 
-    // NOTE: authorization policies are deferred (see Program.AddAuthentication).
-    // Writes here should be platform-team only — add [Authorize(Policy = ...)] once defined.
+    // Reads require any authenticated caller ([Authorize] on the controller); writes are
+    // restricted to the platform team via Policies.PlatformTeam.
 
     /// <summary>Gets all selection modes. Optionally filter by active state.</summary>
     /// <param name="isActive">(Optional) filter by active state; omit to return all.</param>
@@ -50,6 +53,7 @@ public class ClassifierSelectionModeController : ControllerBase
     /// <summary>Creates a new selection mode.</summary>
     /// <param name="selectionModeDto">The selection mode to create.</param>
     [HttpPost]
+    [Authorize(Policy = Policies.PlatformTeam)]
     public async Task<IActionResult> AddClassifierSelectionMode([FromBody] ClassifierSelectionModeDto selectionModeDto)
     {
         if (selectionModeDto == null)
@@ -65,6 +69,7 @@ public class ClassifierSelectionModeController : ControllerBase
     /// <param name="id">The selection mode id.</param>
     /// <param name="selectionModeDto">The updated selection mode data.</param>
     [HttpPut("{id}")]
+    [Authorize(Policy = Policies.PlatformTeam)]
     public async Task<IActionResult> UpdateClassifierSelectionMode(
         [FromRoute] Guid id,
         [FromBody] ClassifierSelectionModeDto selectionModeDto)
@@ -80,6 +85,7 @@ public class ClassifierSelectionModeController : ControllerBase
     /// <summary>Deletes a selection mode.</summary>
     /// <param name="id">The selection mode id.</param>
     [HttpDelete("{id}")]
+    [Authorize(Policy = Policies.PlatformTeam)]
     public async Task<IActionResult> DeleteClassifierSelectionMode([FromRoute] Guid id)
     {
         _logger.LogInformation("Deleting selection mode {Id}", id);

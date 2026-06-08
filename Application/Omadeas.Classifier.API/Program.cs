@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Omadeas.Classifier.API.Middleware;
+using Omadeas.Classifier.Core.Constants;
 using Omadeas.Classifier.Core.Interfaces;
 using Omadeas.Classifier.Core.Services;
 using Omadeas.Classifier.Core.Utils;
@@ -50,6 +51,20 @@ public class Program
             string xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
             if (File.Exists(xmlPath))
                 options.IncludeXmlComments(xmlPath);
+
+            // Bearer-token input so [Authorize] endpoints can be exercised from Swagger UI.
+            OpenApiSecurityScheme jwtScheme = new()
+            {
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                In = ParameterLocation.Header,
+                Description = "Paste a JWT (without the 'Bearer ' prefix).",
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            };
+            options.AddSecurityDefinition("Bearer", jwtScheme);
+            options.AddSecurityRequirement(new OpenApiSecurityRequirement { [jwtScheme] = Array.Empty<string>() });
         });
 
         // Get connection string for DapperWrapper
@@ -135,13 +150,18 @@ public class Program
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtIssuer,
                     ValidAudience = jwtIssuer,
-                    IssuerSigningKey = rsaKey
+                    IssuerSigningKey = rsaKey,
+                    // The Auth service emits roles in a "role" claim; map it so RequireRole works.
+                    RoleClaimType = "role"
                 };
             });
 
-        // Authorization policies for the Classifier service are registered here once the
-        // access model is defined. Add the policy + its IAuthorizationHandler implementation,
-        // then guard endpoints with [Authorize(Policy = Policies.<Name>)].
-        builder.Services.AddAuthorization();
+        // Authorization policies. Endpoints opt in via [Authorize(Policy = Policies.<Name>)];
+        // controllers also carry a bare [Authorize] so a valid token is required everywhere.
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(Policies.PlatformTeam, policy =>
+                policy.RequireRole(Roles.PlatformAdmin));
+        });
     }
 }

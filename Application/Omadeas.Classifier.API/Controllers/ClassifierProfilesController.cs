@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
@@ -9,7 +10,8 @@ namespace Omadeas.Classifier.API.Controllers;
 /// never hard-deleted (spec §13 #1): DELETE retires and a separate endpoint reactivates.
 /// </summary>
 [ApiController]
-[Route("api/profiles")]
+[Authorize]
+[Route("api/classifiers/profiles")]
 public class ClassifierProfilesController : ControllerBase
 {
     private readonly IClassifierProfileService _profileService;

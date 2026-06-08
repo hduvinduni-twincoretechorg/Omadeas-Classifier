@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
@@ -9,6 +10,7 @@ namespace Omadeas.Classifier.API.Controllers;
 /// (spec §13 #1): DELETE retires (is_active=false) and a separate endpoint reactivates.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/classifiers")]
 public class ClassifiersController : ControllerBase
 {
@@ -21,8 +23,9 @@ public class ClassifiersController : ControllerBase
         _logger = logger;
     }
 
-    // NOTE: authorization policies are deferred (see Program.AddAuthentication).
-    // Tenants must not edit platform classifiers — enforce via [Authorize(Policy = ...)] once defined.
+    // All endpoints require an authenticated caller ([Authorize] on the controller).
+    // TODO: tenants must not edit platform classifiers — needs a resource-based check on the
+    // classifier's source/company (beyond a role policy); add once the claim shape is confirmed.
 
     /// <summary>Gets classifiers, optionally filtered by company, source and active state.</summary>
     [HttpGet]

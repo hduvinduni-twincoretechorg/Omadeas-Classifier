@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
@@ -10,6 +11,7 @@ namespace Omadeas.Classifier.API.Controllers;
 /// delete — the policy inherits the classifier's lifecycle (spec §4.6).
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/classifiers/{classifierId}/policy")]
 public class ClassifierValuePolicyController : ControllerBase
 {

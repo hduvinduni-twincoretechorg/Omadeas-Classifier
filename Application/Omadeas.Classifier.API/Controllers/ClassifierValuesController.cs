@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omadeas.Classifier.Core.DTOs;
 using Omadeas.Classifier.Core.Interfaces;
@@ -9,6 +10,7 @@ namespace Omadeas.Classifier.API.Controllers;
 /// (spec §13 #1): DELETE retires (is_active=false) and a separate endpoint reactivates.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/classifiers/{classifierId}/values")]
 public class ClassifierValuesController : ControllerBase
 {
