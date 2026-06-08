@@ -1,0 +1,675 @@
+{
+  "info": {
+    "name": "Omadeas Classifier Service (v2)",
+    "description": "Classifier service API — definition + profile + history layers (8 entities + 1 lookup).\n\nRun the requests top-to-bottom: the test scripts capture created IDs into collection variables so the flow chains (selection mode -> classifier -> values -> policy -> constraint -> profile -> member -> history).\n\nBase URL defaults to the dev http profile (http://localhost:5180). All routes are under /api/classifiers/. Auth: every endpoint now requires a valid JWT — set {{bearerToken}} (sent collection-wide as a Bearer token). Selection-mode writes (POST/PUT/DELETE) additionally require the PlatformTeam policy (platform_admin role).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5180" },
+    { "key": "bearerToken", "value": "" },
+    { "key": "platformTenantId", "value": "00000000-0000-0000-0000-000000000001" },
+    { "key": "tenantCompanyId", "value": "22222222-0000-0000-0000-000000000001" },
+    { "key": "singleSelectModeId", "value": "11111111-0000-0000-0000-000000000001" },
+    { "key": "selectionModeId", "value": "" },
+    { "key": "classifierId", "value": "" },
+    { "key": "valueId", "value": "" },
+    { "key": "valueId2", "value": "" },
+    { "key": "profileId", "value": "" },
+    { "key": "memberId", "value": "" },
+    { "key": "constraintId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Selection Modes",
+      "item": [
+        {
+          "name": "GET all selection modes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/selection-modes?isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "selection-modes"],
+              "query": [{ "key": "isActive", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "GET selection mode by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/selection-modes/{{selectionModeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "selection-modes", "{{selectionModeId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST create selection mode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('selectionModeId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"HIERARCHICAL\",\n  \"name\": \"Hierarchical (copy)\",\n  \"description\": \"Created via Postman\",\n  \"allowsMultiple\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/selection-modes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "selection-modes"]
+            }
+          }
+        },
+        {
+          "name": "PUT update selection mode",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{selectionModeId}}\",\n  \"code\": \"HIERARCHICAL\",\n  \"name\": \"Hierarchical (updated)\",\n  \"description\": \"Updated via Postman\",\n  \"allowsMultiple\": true,\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/selection-modes/{{selectionModeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "selection-modes", "{{selectionModeId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE selection mode",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/selection-modes/{{selectionModeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "selection-modes", "{{selectionModeId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Classifiers",
+      "item": [
+        {
+          "name": "GET all classifiers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers?companyId={{platformTenantId}}&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers"],
+              "query": [
+                { "key": "companyId", "value": "{{platformTenantId}}" },
+                { "key": "source", "value": "platform", "disabled": true },
+                { "key": "isActive", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST create classifier (auto-creates default policy)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created', () => pm.response.code === 201);",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('classifierId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"{{platformTenantId}}\",\n  \"source\": \"platform\",\n  \"code\": \"PRIORITY\",\n  \"name\": \"Priority\",\n  \"description\": \"Node priority\",\n  \"order\": 10,\n  \"appliesToNodeTypes\": [\"TASK\", \"RISK\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers"]
+            }
+          }
+        },
+        {
+          "name": "GET classifier by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}"]
+            }
+          }
+        },
+        {
+          "name": "PUT update classifier",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{classifierId}}\",\n  \"name\": \"Priority (updated)\",\n  \"description\": \"Updated description\",\n  \"order\": 20,\n  \"appliesToNodeTypes\": [\"TASK\", \"RISK\", \"STORY\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET classifier history",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "history"]
+            }
+          }
+        },
+        {
+          "name": "DELETE classifier (soft-retire)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST reactivate classifier",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/reactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "reactivate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Classifier Values",
+      "item": [
+        {
+          "name": "GET values for classifier",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values?isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values"],
+              "query": [{ "key": "isActive", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "POST create value HIGH",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('valueId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"HIGH\",\n  \"name\": \"High\",\n  \"description\": \"Highest priority\",\n  \"order\": 10,\n  \"colour\": \"#ef4444\",\n  \"icon\": \"!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values"]
+            }
+          }
+        },
+        {
+          "name": "POST create value LOW",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('valueId2', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"LOW\",\n  \"name\": \"Low\",\n  \"description\": \"Lowest priority\",\n  \"order\": 20,\n  \"colour\": \"#94a3b8\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values"]
+            }
+          }
+        },
+        {
+          "name": "GET value by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values/{{valueId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values", "{{valueId}}"]
+            }
+          }
+        },
+        {
+          "name": "PUT update value",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{valueId}}\",\n  \"name\": \"High (updated)\",\n  \"description\": \"Drop everything\",\n  \"order\": 5,\n  \"colour\": \"#dc2626\",\n  \"icon\": \"!!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values/{{valueId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values", "{{valueId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE value (soft-retire)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values/{{valueId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values", "{{valueId2}}"]
+            }
+          }
+        },
+        {
+          "name": "POST reactivate value",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/values/{{valueId2}}/reactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "values", "{{valueId2}}", "reactivate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Policy",
+      "item": [
+        {
+          "name": "GET policy",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/policy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "policy"]
+            }
+          }
+        },
+        {
+          "name": "PUT update policy (set default value)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectionModeId\": \"{{singleSelectModeId}}\",\n  \"minSelected\": null,\n  \"maxSelected\": 1,\n  \"isRequired\": true,\n  \"defaultValueId\": \"{{valueId}}\",\n  \"allowCustomValues\": false,\n  \"requiresReasonOnChange\": false,\n  \"computationMode\": \"manual\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/policy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "policy"]
+            }
+          }
+        },
+        {
+          "name": "POST create policy (only if missing — 400 if auto-created)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectionModeId\": \"{{singleSelectModeId}}\",\n  \"isRequired\": false,\n  \"computationMode\": \"manual\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/{{classifierId}}/policy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "{{classifierId}}", "policy"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Constraints",
+      "item": [
+        {
+          "name": "GET constraints (by classifier)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/constraints?classifierId={{classifierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "constraints"],
+              "query": [
+                { "key": "classifierId", "value": "{{classifierId}}" },
+                { "key": "isActive", "value": "true", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST create constraint (HIGH PROHIBITS LOW)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('constraintId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceClassifierId\": \"{{classifierId}}\",\n  \"sourceValueId\": \"{{valueId}}\",\n  \"targetClassifierId\": \"{{classifierId}}\",\n  \"targetValueId\": \"{{valueId2}}\",\n  \"constraintType\": \"PROHIBITS\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/constraints",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "constraints"]
+            }
+          }
+        },
+        {
+          "name": "GET constraint by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/constraints/{{constraintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "constraints", "{{constraintId}}"]
+            }
+          }
+        },
+        {
+          "name": "PUT update constraint",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{constraintId}}\",\n  \"constraintType\": \"WARNS\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/constraints/{{constraintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "constraints", "{{constraintId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE constraint (hard delete)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/constraints/{{constraintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "constraints", "{{constraintId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profiles",
+      "item": [
+        {
+          "name": "GET all profiles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles?companyId={{platformTenantId}}&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles"],
+              "query": [
+                { "key": "companyId", "value": "{{platformTenantId}}" },
+                { "key": "source", "value": "platform", "disabled": true },
+                { "key": "isActive", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST create profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('profileId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"{{platformTenantId}}\",\n  \"source\": \"platform\",\n  \"code\": \"RISK_GOV\",\n  \"name\": \"Risk Governance\",\n  \"description\": \"Risk governance bundle\",\n  \"order\": 10,\n  \"scopeDefault\": \"subtree\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles"]
+            }
+          }
+        },
+        {
+          "name": "GET profile by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}"]
+            }
+          }
+        },
+        {
+          "name": "PUT update profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{profileId}}\",\n  \"name\": \"Risk Governance (updated)\",\n  \"description\": \"Updated\",\n  \"order\": 20,\n  \"scopeDefault\": \"self\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET profile history",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "history"]
+            }
+          }
+        },
+        {
+          "name": "DELETE profile (soft-retire)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST reactivate profile",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/reactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "reactivate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile Members",
+      "item": [
+        {
+          "name": "GET members for profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "members"]
+            }
+          }
+        },
+        {
+          "name": "POST add classifier to profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('memberId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classifierId\": \"{{classifierId}}\",\n  \"isRequired\": true,\n  \"order\": 10\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "members"]
+            }
+          }
+        },
+        {
+          "name": "GET member by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/members/{{memberId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "members", "{{memberId}}"]
+            }
+          }
+        },
+        {
+          "name": "PUT update member",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{memberId}}\",\n  \"isRequired\": false,\n  \"order\": 30\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/members/{{memberId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "members", "{{memberId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE member (remove from bundle)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/classifiers/profiles/{{profileId}}/members/{{memberId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classifiers", "profiles", "{{profileId}}", "members", "{{memberId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

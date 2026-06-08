@@ -26,6 +26,12 @@ public class ExceptionHandlingMiddleware
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             await context.Response.WriteAsJsonAsync(new { error = ex.Message });
         }
+        catch (BadRequestException ex)
+        {
+            _logger.LogWarning(ex, "Bad request");
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+        }
         catch (ValidationException ex)
         {
             _logger.LogWarning(ex, "Validation failed");
